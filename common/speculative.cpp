@@ -2540,6 +2540,10 @@ common_speculative_init_result::common_speculative_init_result(
                                     COMMON_SPECULATIVE_TYPE_DRAFT_MTP) != params.speculative.types.end();
 
     auto mparams = common_model_params_to_llama(params);
+    // A sidecar draft shares its target's devices, and the tensor-parallel
+    // splitter cannot mix repacked and canonical layouts in one group. Drafts
+    // are decode-bound where the repack is neutral, so they load canonical.
+    mparams.use_extra_bufts = false;
     auto cparams = common_context_params_to_llama(params);
 
     if (spec_mtp) {
