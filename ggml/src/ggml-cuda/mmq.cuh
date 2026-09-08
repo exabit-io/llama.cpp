@@ -239,6 +239,7 @@ static __host__ ggml_cuda_mmq_config ggml_cuda_mmq_get_config(const ggml_type ty
         }
         if (GGML_CUDA_CC_IS_RDNA3(cc)) {  // covers RDNA 3.0
             return ggml_cuda_mmq_get_config_rdna3(type, J, fallback);
+        }
         if (cc == GGML_CUDA_CC_VEGA20) {
             return ggml_cuda_mmq_get_config_gfx906(type, J, fallback);
         }
