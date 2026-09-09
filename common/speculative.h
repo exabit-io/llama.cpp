@@ -87,6 +87,10 @@ void common_speculative_accept(common_speculative * spec, llama_seq_id, uint16_t
 
 // Discard transient state and report if the shared target/draft prompt cache is invalid.
 bool common_speculative_reset(common_speculative * spec, llama_seq_id seq_id);
+// report a partial acceptance that the context could not apply (checkpoint-restore
+// path); the full accept() will not be called for this round, so implementations
+// with cross-round state (e.g. the adaptive depth controller) get the feedback here
+void common_speculative_accept_partial(common_speculative * spec, llama_seq_id, uint16_t n_accepted);
 
 // (optional) get/set internal state
 bool common_speculative_get_state(common_speculative * spec, llama_seq_id seq_id, std::vector<uint8_t> & data);
