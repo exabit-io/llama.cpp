@@ -255,11 +255,14 @@ static constexpr __host__ __device__ uint32_t ggml_cuda_fattn_tile_get_config_am
 #ifndef GFX906_FA32
 #define GFX906_FA32 512, 1, 128, 128
 #endif
-    GGML_CUDA_FATTN_TILE_CONFIG_CASE(256, 256,  2, GFX906_FA2)
-    GGML_CUDA_FATTN_TILE_CONFIG_CASE(256, 256,  4, GFX906_FA4)
-    GGML_CUDA_FATTN_TILE_CONFIG_CASE(256, 256,  8, GFX906_FA8)
-    GGML_CUDA_FATTN_TILE_CONFIG_CASE(256, 256, 16, GFX906_FA16)
-    GGML_CUDA_FATTN_TILE_CONFIG_CASE(256, 256, 32, GFX906_FA32)
+// the row macros expand to four comma-separated fields; the variadic wrapper re-scans them into seven arguments
+#define GFX906_FA_ROW(...) GGML_CUDA_FATTN_TILE_CONFIG_CASE(__VA_ARGS__)
+    GFX906_FA_ROW(256, 256,  2, GFX906_FA2)
+    GFX906_FA_ROW(256, 256,  4, GFX906_FA4)
+    GFX906_FA_ROW(256, 256,  8, GFX906_FA8)
+    GFX906_FA_ROW(256, 256, 16, GFX906_FA16)
+    GFX906_FA_ROW(256, 256, 32, GFX906_FA32)
+#undef GFX906_FA_ROW
 
     return ggml_cuda_fattn_tile_get_config_amd(DKQ, DV, ncols);
 }
