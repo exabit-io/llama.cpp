@@ -3642,6 +3642,8 @@ bool common_speculative_reset(common_speculative * spec, llama_seq_id seq_id) {
     spec->impl_last[seq_id] = nullptr;
 
     return prompt_invalidated;
+}
+
 void common_speculative_accept_partial(common_speculative * spec, llama_seq_id seq_id, uint16_t n_accepted) {
     common_speculative_impl * impl = spec->impl_last[seq_id];
 
