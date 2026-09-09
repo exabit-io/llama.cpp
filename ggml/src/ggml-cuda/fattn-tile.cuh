@@ -240,11 +240,26 @@ static constexpr __host__ __device__ uint32_t ggml_cuda_fattn_tile_get_config_am
 // n=1 207 -> 191, n=2 267 -> 251, n=4 283 -> 261, n=8 451 -> 350; prefill batch 512: 23.8 -> 21.6 ms. Decode wants small
 // tiles at high occupancy, prefill large tiles at 512 threads. Other head sizes fall through to the generic AMD table.
 static constexpr __host__ __device__ uint32_t ggml_cuda_fattn_tile_get_config_amd_gcn(const int DKQ, const int DV, const int ncols) {
-    GGML_CUDA_FATTN_TILE_CONFIG_CASE(256, 256,  2, 128, 8,  64,  64)
-    GGML_CUDA_FATTN_TILE_CONFIG_CASE(256, 256,  4, 256, 2, 128,  64)
-    GGML_CUDA_FATTN_TILE_CONFIG_CASE(256, 256,  8, 256, 2, 128,  64)
-    GGML_CUDA_FATTN_TILE_CONFIG_CASE(256, 256, 16, 256, 2, 128,  64)
-    GGML_CUDA_FATTN_TILE_CONFIG_CASE(256, 256, 32, 512, 1, 128, 128)
+#ifndef GFX906_FA2
+#define GFX906_FA2  128, 8,  64,  64
+#endif
+#ifndef GFX906_FA4
+#define GFX906_FA4  256, 2, 128,  64
+#endif
+#ifndef GFX906_FA8
+#define GFX906_FA8  256, 2, 128,  64
+#endif
+#ifndef GFX906_FA16
+#define GFX906_FA16 256, 2, 128,  64
+#endif
+#ifndef GFX906_FA32
+#define GFX906_FA32 512, 1, 128, 128
+#endif
+    GGML_CUDA_FATTN_TILE_CONFIG_CASE(256, 256,  2, GFX906_FA2)
+    GGML_CUDA_FATTN_TILE_CONFIG_CASE(256, 256,  4, GFX906_FA4)
+    GGML_CUDA_FATTN_TILE_CONFIG_CASE(256, 256,  8, GFX906_FA8)
+    GGML_CUDA_FATTN_TILE_CONFIG_CASE(256, 256, 16, GFX906_FA16)
+    GGML_CUDA_FATTN_TILE_CONFIG_CASE(256, 256, 32, GFX906_FA32)
 
     return ggml_cuda_fattn_tile_get_config_amd(DKQ, DV, ncols);
 }
