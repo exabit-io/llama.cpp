@@ -1,3 +1,9 @@
+<!-- exabit banner -->
+> **exabit-io/llama.cpp** — llama.cpp for AMD gfx906 (Radeon Pro Vega II / MI50, four-die Mac Pro nodes). Branch **`gfx906`**
+> is the product (upstream master merged into the mx-llama.cpp fork + the Exabit series); `master` mirrors upstream.
+> Start with **[GFX906.md](GFX906.md)**; the measurements and launch profiles are in
+> [exabit-io/llama.cpp-gfx906-tuning](https://github.com/exabit-io/llama.cpp-gfx906-tuning).
+
 <!-- fork banner -->
 > **mx-llama.cpp** - a fork of llama.cpp for multi-GPU inference. Backend-generic,
 > kernel tuning for AMD gfx906 (MI50).
