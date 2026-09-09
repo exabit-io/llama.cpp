@@ -222,7 +222,7 @@ void ggml_cuda_mul_mat_q(
                 ne00, ne01, iter_ne11, s01, iter_ne11, s1,
                 ne02, ne12, s02, ys12, s2,
                 ne03, ne13, s03, ys13, s3,
-                iter_ne11};
+                iter_ne11, iter_ne11};
             ggml_cuda_mul_mat_q_switch_type(ctx, args, stream);
         }
         return;
@@ -359,7 +359,7 @@ void ggml_cuda_mul_mat_q(
             ne00, ne01, iter_rows, s01, iter_rows, s1,
             ne02, ne02, s02, workspace_s12, s2,
             ne03, ne13, s03, workspace_s13, s3,
-            iter_ne12};
+            iter_ne12, iter_ne12};
         ggml_cuda_mul_mat_q_switch_type(ctx, args, stream);
     }
 }
