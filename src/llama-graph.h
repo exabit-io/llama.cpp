@@ -275,6 +275,17 @@ public:
     ggml_tensor * s_copy_main;   // I32 [n_seqs]
     ggml_tensor * s_copy_extra;  // I32 [n_rs - n_seqs]
 
+    // Ring-mode physical destination rows, ordered j + n_seqs*s.
+    // Per-snapshot leaves are first-class inputs because views do not inherit the scheduler's staged-input contract.
+    ggml_tensor * s_write = nullptr; // I32 [n_seqs * n_snap]
+    // The same destinations in sequence-major, oldest-first order for batched convolution writes.
+    ggml_tensor * s_write_conv = nullptr; // I32 [n_seqs * n_snap]
+    std::vector<ggml_tensor *> s_write_slices;
+
+    void fill_s_write(const llama_ubatch * ubatch, const llama_memory_recurrent_context * m);
+    void upload_s_copy(const llama_memory_recurrent_context * m, int64_t n_seqs_ub);
+    int64_t n_snap = 0;
+
     const llama_memory_recurrent_context * mctx;
 
     // used in view offsets, need to match for valid graph reuse
@@ -810,6 +821,13 @@ struct llm_graph_params {
 
     llm_graph_result * res;
 
+    // optional persistent device tensors for the layer-input taps, indexed by lid.
+    // When present, set_outputs copies each tap into its tensor in-graph instead of
+    // pinning it as an output, keeping the tap out of the galloc arena - taps in the
+    // arena change the packing so runtime graphs stop fitting the reserved plan and
+    // every prefill chunk pays a re-reserve plus an all-backend synchronize.
+    const std::vector<ggml_tensor *> * layer_inp_dev = nullptr;
+
     // return true if the "other" params would result in a graph with the same topology as with the current params
     //   having the same topology allows us to reuse the graph in some cases
     bool allow_reuse(const llm_graph_params & other) const {
@@ -1219,6 +1237,15 @@ struct llm_graph_context {
             ggml_tensor * sinks, // [n_head_q]
             ggml_tensor * v_mla, // [n_embd_head_v_mla, n_embd_head_v, n_head_v] // TODO: remove
                   float   kq_scale,
+                    int   il) const;
+
+    // Phase 2b: store ONLY k_cur/v_cur into the KV cache (the store half of build_attn, no
+    // attention/output). Used by the MTP head's KV-only prefill replay. Mirrors build_attn's
+    // store block exactly so the stored K/V are bit-identical to the full path.
+    void build_attn_store_kv(
+            llm_graph_input_attn_kv * inp,
+            ggml_tensor * k_cur,
+            ggml_tensor * v_cur,
                     int   il) const;
 
     llm_graph_input_attn_k  * build_attn_inp_k() const;
