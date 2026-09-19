@@ -138,3 +138,18 @@ three repacked narrow-batch mat-vec patches cannot apply without `ggml-cuda/q8_r
 
 This also means the bin list needs the ninth bin (`neutral-required-substrate` vs `neutral-drop`);
 without it, composing from bins would delete files dependent patches need and the build would break.
+
+### Status of the branch contents TODAY (pre-survey) — do not read them as binned
+
+| branch | contents today | contents after the survey |
+|---|---|---|
+| `gfx906-substrate-v041` | the whole substrate, unbinned | unchanged — it stays the test pool |
+| `gfx906-multi` | rebased equivalent of what `/opt/llama.cpp-gfx906` ships (17 of our 29) | rebuilt so its own commits = the `multi-user-only` bin |
+| `gfx906-single` | rebased equivalent of what `/opt/llama.cpp-mxxm-fh` ships (1 of 10 so far) | rebuilt so its own commits = the `single-user-only` bin |
+| `gfx906-required` | does not exist yet | the `neutral-required-substrate` bin |
+| `gfx906-base` | retired name — see the rename note above | — |
+
+The two profile branches are legitimate as *"today's deployed patch set, rebased onto v0.4.1"* — which
+is what a non-regression baseline needs to be. They are **not** binned results, and the patch sets they
+carry were inherited from the single-axis 2026-09-09 survey, which D2/D6/D10 all give reasons to
+distrust.
