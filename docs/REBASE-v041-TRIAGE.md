@@ -45,3 +45,45 @@ should be two branches rather than two repos.
    compiled to a public repo is not acceptable.
 4. Tidy: drop the temporary local `single-src` remote and the scratch branches
    (`gfx906-v041-full`, `gfx906-b10254`, `mxxm-b10*`) once the resolution lands.
+
+---
+
+## IMPORTANT: what `gfx906-base` contains today is NOT "the patches that help both profiles"
+
+Lead asked 2026-09-20: *"gfx906-base contains the set of patches that improve performance on both
+gfx906-single and also gfx906-multi?"* **No — and the name invites exactly that error.**
+
+**Today** `gfx906-base` = v0.4.1 + the **entire mxxm substrate end-state, untested and unbinned**.
+Nothing in it has been measured on either axis. Some of it may regress one or both profiles. It is a
+scaffold to begin binning from, not a binned result. (Same class of error as saying we "hold" the 148
+commits — language that smuggles in a verdict.)
+
+**After the survey**, the composition becomes:
+
+| bin | goes to |
+|---|---|
+| `both` | `gfx906-base` |
+| `neutral-required-substrate` | `gfx906-base` — see below |
+| `multi-user-only` | `gfx906-multi` |
+| `single-user-only` | `gfx906-single` |
+| `regresses-both` | dropped |
+| `conflicts-with-another-patch` | resolved per profile |
+| `upstream-already-has-it` | dropped — already in v0.4.1 |
+| `technique-requires-implementation` | in no branch until implemented |
+
+**Proposed rename to stop the name lying:** the current branch becomes **`gfx906-substrate-v041`**
+(the unbinned substrate on the common base) and **`gfx906-base` is reserved** for the post-survey
+composition of `both` + required substrate. Topology as approved by the lead is unchanged.
+
+**A gap in the bin taxonomy this exposes.** Some substrate patches are *enabling infrastructure*, not
+optimisations — the meta/TP backend, the `q8_repack/` files. Each may measure as **neutral in
+isolation while being required** by patches that do win: proven already, since our three repacked
+mat-vec patches cannot even apply without `q8_repack/`. So `neutral` must not imply "drop". It needs
+splitting:
+
+- **`neutral-drop`** — no gain on either axis and nothing depends on it. Remove.
+- **`neutral-required-substrate`** — no gain of its own, but a winning patch depends on it. Keep in
+  the base, and record in the verdict which patch requires it.
+
+Without that split, composing the builds from the bins would delete files that dependent patches need,
+and the composition would not build.
