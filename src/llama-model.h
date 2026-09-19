@@ -231,6 +231,13 @@ struct llama_layer_nextn {
     struct ggml_tensor * shared_head_head_s    = nullptr;
     struct ggml_tensor * shared_head_head_in_s = nullptr;
     struct ggml_tensor * shared_head_norm      = nullptr;
+
+    // qwen4exp: the fusion is two projections rather than one over a concat, and the
+    // block folds its own 4-branch residual before reading the hidden state
+    struct ggml_tensor * fc_hidden             = nullptr;
+    struct ggml_tensor * hc_norm               = nullptr;
+    struct ggml_tensor * hc_down               = nullptr;
+    struct ggml_tensor * hc_up                 = nullptr;
 };
 
 struct llama_layer_switch_lora {
@@ -602,8 +609,14 @@ struct llama_device {
     ggml_backend_dev_t dev;
 };
 
+// Userdata for llama_meta_device_get_split_state. n_devices and n_stages must
+// match the values passed to ggml_backend_meta_device (n_devs and n_devs/tps).
+// The meta device, meta backend context, and this struct all hold the same values
+// (derived from tps); they are populated together in llama.cpp's build_meta_devices
+// and never diverge at runtime.
 struct llama_meta_device_get_split_state_userdata {
-    size_t                     n_devices;
+    size_t                     n_devices; // total simple devices wrapped by the Meta device
+    size_t                     n_stages;  // pipeline-parallel stage count; 1 == single-stage TP
     const struct llama_model * model;
 };
 
@@ -729,6 +742,7 @@ struct llama_model {
     size_t n_tensors() const;
     size_t n_devices() const;
     const float * tensor_split() const;
+    bool tensor_mirror_output() const;
 
     uint32_t n_gpu_layers() const;
     llama_split_mode split_mode() const;
