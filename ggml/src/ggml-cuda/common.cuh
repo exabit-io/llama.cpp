@@ -323,18 +323,6 @@ static bool fast_fp16_hardware_available(const int cc) {
 }
 
 // To be used for feature selection of external libraries, e.g. cuBLAS.
-// AMD GPUs without native bfloat16 (pre-CDNA, pre-RDNA3) have no tuned rocBLAS
-// bf16 GEMM and fall back to a stub kernel, so computing in F32 is much faster
-// there. Measured on gfx906/Vega20: a bf16 GEMM picks a 64x32x8 macro-tile and
-// runs 3.5x slower than the F32 path on the same weights.
-static bool fast_bf16_hardware_available(const int cc) {
-    if (GGML_CUDA_CC_IS_AMD(cc)) {
-        return GGML_CUDA_CC_IS_CDNA(cc) || cc >= GGML_CUDA_CC_RDNA3;
-    }
-    return true;
-}
-
-// To be used for feature selection of external libraries, e.g. cuBLAS.
 static bool fp16_mma_hardware_available(const int cc) {
     return (GGML_CUDA_CC_IS_NVIDIA(cc) && cc >= GGML_CUDA_CC_VOLTA) ||
         GGML_CUDA_CC_IS_CDNA(cc) || GGML_CUDA_CC_IS_RDNA3(cc) || GGML_CUDA_CC_IS_RDNA4(cc) ||
@@ -342,6 +330,12 @@ static bool fp16_mma_hardware_available(const int cc) {
 }
 
 // To be used for feature selection of external libraries, e.g. cuBLAS.
+// AMD GPUs without native bfloat16 (pre-CDNA, pre-RDNA3) have no tuned rocBLAS bf16 GEMM and fall
+// back to a stub kernel, so computing in F32 is much faster there. Measured on gfx906/Vega20: a
+// bf16 GEMM picks a 64x32x8 macro-tile and runs 3.5x slower than the F32 path on the same weights.
+// (Comment retained from mx-llama.cpp; its duplicate definition of this function was removed during
+// the v0.4.1 rebase — upstream's form below is identical for AMD and additionally gates NVIDIA on
+// Ampere, so it is strictly more correct.)
 static bool fast_bf16_hardware_available(const int cc) {
         return (GGML_CUDA_CC_IS_AMD(cc) && (cc >= GGML_CUDA_CC_RDNA3 || GGML_CUDA_CC_IS_CDNA(cc)))
             || (GGML_CUDA_CC_IS_NVIDIA(cc) && cc >= GGML_CUDA_CC_AMPERE);
