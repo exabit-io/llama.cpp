@@ -87,3 +87,54 @@ splitting:
 
 Without that split, composing the builds from the bins would delete files that dependent patches need,
 and the composition would not build.
+
+---
+
+## Branch-per-bin topology (lead, 2026-09-20) — each branch's own commits ARE one bin
+
+Lead: *"don't we need a gfx906-both so we can track the patchset delta that improves performance in
+both... For each individual patch we want to try."*
+
+```
+v0.4.1                       the common base and the zero point
+│
+├─ gfx906-substrate-v041     UNBINNED POOL — test source only, never deployed.
+│                            All 177 candidate patches live here awaiting verdicts.
+│
+└─ gfx906-required           bin: neutral-required-substrate. Enabling infrastructure that
+   │                         wins nothing alone but that winning patches depend on
+   │                         (meta/TP backend, ggml-cuda/q8_repack/ files).
+   │
+   └─ gfx906-both            its own commits = bin `both`  <- THE tracked delta
+      │
+      ├─ gfx906-single       its own commits = bin `single-user-only` -> /opt/llama.cpp-mxxm-fh
+      └─ gfx906-multi        its own commits = bin `multi-user-only`  -> /opt/llama.cpp-gfx906
+```
+
+**Why this shape and not a flat set of branches:**
+
+1. **Each branch's own commits equal exactly one bin**, so the deltas are *queryable* rather than
+   maintained by hand: `git log gfx906-both ^gfx906-required` IS the both-bin patch set;
+   `git log gfx906-single ^gfx906-both` IS the single-only set. The bins cannot drift from the branches.
+2. **`gfx906-single` and `gfx906-multi` are directly buildable** because they descend from
+   `gfx906-both` — no composition step at build time, and no risk of composing a tree nobody tested.
+3. `conflicts-with-another-patch` is expressible: the same patch can appear in both profile branches
+   with **different resolutions**, because they are different branches.
+
+**Patches that belong to no branch but still require a verdict record:** `regresses-both` (rejected),
+`upstream-already-has-it` (already in v0.4.1), `technique-requires-implementation`, `neutral-drop`.
+
+### Constraint on per-patch testing: dependency order
+
+A patch can only be binned *individually* if it applies and builds on the baseline. Some do not — our
+three repacked narrow-batch mat-vec patches cannot apply without `ggml-cuda/q8_repack/`. So:
+
+- the baseline for per-patch A/B is **`gfx906-required`**, not bare v0.4.1;
+- where a patch still will not stand alone, it is tested **together with its dependencies**, and the
+  verdict record states that its evidence is group-level (the `would change if` field);
+- `gfx906-required` must therefore be populated **before** the campaign starts, not discovered during
+  it. Populating it is itself a judgement: a patch goes in only if a candidate depends on it, and the
+  verdict record for the dependent patch names it.
+
+This also means the bin list needs the ninth bin (`neutral-required-substrate` vs `neutral-drop`);
+without it, composing from bins would delete files dependent patches need and the build would break.
