@@ -562,11 +562,21 @@ struct server_slot {
 
             state = SLOT_STATE_IDLE;
 
-            // Discard deferred draft state and any target-only prompt cache.
-            const bool speculative_prompt_invalid = common_speculative_reset(spec, id);
-
+            // NOTE (v0.4.1 rebase): the fork's common_speculative_reset() discarded deferred draft
+            // state and reported whether the speculative prompt had gone invalid. It belongs to the
+            // fork's MTP draft lifecycle, which this base defers (bin
+            // technique-requires-implementation, with process_decode and the draft TP sizing).
+            // Upstream v0.4.1 has no equivalent. Conservative substitute: keep the child-slot clear
+            // and drop the draft-invalidation branch.
+            //
+            // CONSEQUENCE: this base must NOT be run with MTP enabled. Without the reset, deferred
+            // draft state is no longer invalidated on slot release, so a slot reused across
+            // sequences could serve stale draft context. The fork's MTP mirroring is absent from
+            // this base anyway, so non-MTP operation is unaffected — but R3.9's MTP gate cannot be
+            // run until the subsystem is reimplemented against upstream's interface.
+            //
             // Do not keep context of child slots - the parent's context is enough.
-            if (task->is_child() || speculative_prompt_invalid) {
+            if (task->is_child()) {
                 prompt_clear();
             }
 
