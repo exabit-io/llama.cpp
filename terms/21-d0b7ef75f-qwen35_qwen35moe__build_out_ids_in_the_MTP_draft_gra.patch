@@ -1,0 +1,64 @@
+From d0b7ef75fde8c5c5484467bd56918fa1727a4d49 Mon Sep 17 00:00:00 2001
+From: Nikolas Joshua Britton <joshua@exabit.io>
+Date: Wed, 9 Sep 2026 11:22:20 +0000
+Subject: [PATCH] qwen35/qwen35moe: build out_ids in the MTP draft graph
+ whenever n_outputs > 0
+
+With -np 2 and --spec-type draft-mtp the draft acceptance of sequence 0
+collapsed to 0.03-0.10 as soon as a second sequence decoded concurrently
+(slot 1 kept 0.4-0.5; the slot recovered alone). build_qwen35_mtp skipped
+build_inp_out_ids() and the get_rows when n_outputs == n_tokens, so the
+graph topology depended on the output count, which the backend-sampled
+draft tokens of the b10589 merge cannot tolerate. Build out_ids whenever
+n_outputs > 0; the n_outputs == 0 guard for the KV-only replay stays.
+
+Found, bisected and fixed by alex4300 (llama.cpp-gfx906-opt, docs/gfx906/
+spekulation-annahme-einbruch-2026-09-07, PR draft for mx-llama.cpp):
+master 0.045 / 0.405 -> fixed 0.405 / 0.546 (slot 0 / slot 1).
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_015HjFPx7eaGVf7s5N8S9trS
+---
+ src/models/qwen35.cpp    | 7 +++++--
+ src/models/qwen35moe.cpp | 7 +++++--
+ 2 files changed, 10 insertions(+), 4 deletions(-)
+
+diff --git a/src/models/qwen35.cpp b/src/models/qwen35.cpp
+index a9b4c6942..137d0745c 100644
+--- a/src/models/qwen35.cpp
++++ b/src/models/qwen35.cpp
+@@ -536,8 +536,11 @@ llama_model_qwen35::graph_mtp::graph_mtp(const llama_model & model, const llm_gr
+     // n_outputs-conditional: the deferred-prefill / KV-only replay decodes with n_outputs == 0
+     // (batch logits all 0). build_inp_out_ids() would then make a 0-size out_ids whose buffer is
+     // never allocated, tripping the buffer assert in llm_graph_input_out_ids::set_input. Skip it
+-    // when there is nothing to select (n_outputs == 0, or == n_tokens where the rows are identity).
+-    ggml_tensor * inp_out_ids = n_outputs > 0 && n_outputs < n_tokens ? build_inp_out_ids() : nullptr;
++    // when there is nothing to select (n_outputs == 0). Keep it when n_outputs == n_tokens: the graph topology must not
++    // depend on how many tokens are outputs (upstream keeps the input for that reason); with the backend-sampled draft
++    // tokens of the b10589 merge, skipping it collapsed the draft acceptance of sequence 0 to 0.03-0.10 whenever a
++    // second sequence decoded concurrently (-np 2). Found and bisected by alex4300 (llama.cpp-gfx906-opt, 2026-09-07).
++    ggml_tensor * inp_out_ids = n_outputs > 0 ? build_inp_out_ids() : nullptr;
+ 
+     auto * inp_attn = build_attn_inp_kv();
+ 
+diff --git a/src/models/qwen35moe.cpp b/src/models/qwen35moe.cpp
+index dfb861c69..c9b9cfc3e 100644
+--- a/src/models/qwen35moe.cpp
++++ b/src/models/qwen35moe.cpp
+@@ -600,8 +600,11 @@ llama_model_qwen35moe::graph_mtp::graph_mtp(const llama_model & model, const llm
+     // n_outputs-conditional: the deferred-prefill / KV-only replay decodes with n_outputs == 0
+     // (batch logits all 0). build_inp_out_ids() would then make a 0-size out_ids whose buffer is
+     // never allocated, tripping the buffer assert in llm_graph_input_out_ids::set_input. Skip it
+-    // when there is nothing to select (n_outputs == 0, or == n_tokens where the rows are identity).
+-    ggml_tensor * inp_out_ids = n_outputs > 0 && n_outputs < n_tokens ? build_inp_out_ids() : nullptr;
++    // when there is nothing to select (n_outputs == 0). Keep it when n_outputs == n_tokens: the graph topology must not
++    // depend on how many tokens are outputs (upstream keeps the input for that reason); with the backend-sampled draft
++    // tokens of the b10589 merge, skipping it collapsed the draft acceptance of sequence 0 to 0.03-0.10 whenever a
++    // second sequence decoded concurrently (-np 2). Found and bisected by alex4300 (llama.cpp-gfx906-opt, 2026-09-07).
++    ggml_tensor * inp_out_ids = n_outputs > 0 ? build_inp_out_ids() : nullptr;
+ 
+     auto * inp_attn = build_attn_inp_kv();
+ 
+-- 
+2.43.0
+

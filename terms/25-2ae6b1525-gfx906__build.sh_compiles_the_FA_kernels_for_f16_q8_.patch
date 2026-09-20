@@ -1,0 +1,33 @@
+From 2ae6b1525321a1fe48cb4491c17156df67c5b38f Mon Sep 17 00:00:00 2001
+From: Nikolas Joshua Britton <joshua@exabit.io>
+Date: Wed, 9 Sep 2026 11:31:33 +0000
+Subject: [PATCH] gfx906: build.sh compiles the FA kernels for f16, q8_0 and
+ q8_0-K/q4_0-V caches (upstream GGML_CUDA_FA_QUANTS)
+
+Upstream 5a4d0feca replaced GGML_CUDA_FA_ALL_QUANTS with a list; its default
+(q4_0-q4_0;q8_0-q8_0;f16-f16;bf16-bf16) does not include the q8_0-K / q4_0-V
+pair the guide's capacity mode (8 x 256K) uses, which would silently fall back
+to the f16 kernel. Compile exactly the three pairs the profiles use.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_015HjFPx7eaGVf7s5N8S9trS
+---
+ scripts/gfx906/build.sh | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/scripts/gfx906/build.sh b/scripts/gfx906/build.sh
+index 3808728b8..4d05c0fd4 100755
+--- a/scripts/gfx906/build.sh
++++ b/scripts/gfx906/build.sh
+@@ -4,7 +4,7 @@
+ set -euo pipefail
+ PREFIX=${1:-/opt/llama.cpp-gfx906}
+ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DGGML_HIP=ON -DGPU_TARGETS=gfx906 -DAMDGPU_TARGETS=gfx906 \
+-  -DGGML_HIP_GRAPHS=ON -DGGML_HIP_RCCL=ON -DGGML_HIP_NO_VMM=ON -DGGML_HIP_MMQ_MFMA=ON -DGGML_CCACHE=ON -DGGML_NATIVE=ON \
++  -DGGML_HIP_GRAPHS=ON -DGGML_HIP_RCCL=ON "-DGGML_CUDA_FA_QUANTS=f16-f16;q8_0-q8_0;q8_0-q4_0" -DGGML_HIP_NO_VMM=ON -DGGML_HIP_MMQ_MFMA=ON -DGGML_CCACHE=ON -DGGML_NATIVE=ON \
+   -DBUILD_SHARED_LIBS=ON -DCMAKE_C_FLAGS=-march=native -DCMAKE_CXX_FLAGS=-march=native \
+   '-DCMAKE_HIP_FLAGS=-mllvm -amdgpu-sched-strategy=max-ilp' -DCMAKE_INSTALL_PREFIX="$PREFIX" -DLLAMA_CURL=OFF
+ cmake --build build -j"$(nproc)"
+-- 
+2.43.0
+

@@ -1,0 +1,29 @@
+From c9ce0c4e0ebae0de0c7c3a247a823fe7e3565b77 Mon Sep 17 00:00:00 2001
+From: Nikolas Joshua Britton <joshua@exabit.io>
+Date: Wed, 9 Sep 2026 11:36:23 +0000
+Subject: [PATCH] spec: restore the closing brace of common_speculative_reset
+ lost in the adaptive-MTP merge
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_015HjFPx7eaGVf7s5N8S9trS
+(cherry picked from commit 7d3d582b69b7b8abb415df5b05001ece90c58859)
+---
+ common/speculative.cpp | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/common/speculative.cpp b/common/speculative.cpp
+index 0a50d4e0a..0d20d5021 100644
+--- a/common/speculative.cpp
++++ b/common/speculative.cpp
+@@ -3642,6 +3642,8 @@ bool common_speculative_reset(common_speculative * spec, llama_seq_id seq_id) {
+     spec->impl_last[seq_id] = nullptr;
+ 
+     return prompt_invalidated;
++}
++
+ void common_speculative_accept_partial(common_speculative * spec, llama_seq_id seq_id, uint16_t n_accepted) {
+     common_speculative_impl * impl = spec->impl_last[seq_id];
+ 
+-- 
+2.43.0
+

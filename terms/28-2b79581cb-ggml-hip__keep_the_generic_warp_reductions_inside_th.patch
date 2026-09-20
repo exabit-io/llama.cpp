@@ -1,0 +1,94 @@
+From 2b79581cbfa0915dd5d031bd2c928e075cde16b9 Mon Sep 17 00:00:00 2001
+From: Nikolas Joshua Britton <joshua@exabit.io>
+Date: Wed, 9 Sep 2026 12:34:49 +0000
+Subject: [PATCH] ggml-hip: keep the generic warp reductions inside the
+ flash-attention kernels (GGML_GCN_NO_DPP)
+
+Measured 2026-09-09 on one Vega 20 at 32K depth: the DPP reductions cost the
+attention-heavy prefill 3.6% (pp512@32K 269.8 -> 260.0 tok/s) for +0.5%
+decode; on four dies +2% tg128 at depth 0. The FA tile and vec kernels keep
+the ds_bpermute cascades; everything else uses DPP.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_015HjFPx7eaGVf7s5N8S9trS
+(cherry picked from commit 7f0d2282eec89322eeb019d0377d00435045ad0c)
+---
+ ggml/src/ggml-cuda/common.cuh     | 10 +++++-----
+ ggml/src/ggml-cuda/fattn-tile.cuh |  3 +++
+ ggml/src/ggml-cuda/fattn-vec.cuh  |  3 +++
+ 3 files changed, 11 insertions(+), 5 deletions(-)
+
+diff --git a/ggml/src/ggml-cuda/common.cuh b/ggml/src/ggml-cuda/common.cuh
+index fa3c63bb6..cb70a8846 100644
+--- a/ggml/src/ggml-cuda/common.cuh
++++ b/ggml/src/ggml-cuda/common.cuh
+@@ -462,7 +462,7 @@ struct ggml_cuda_unroll<1> {
+     }
+ };
+ 
+-#if defined(GGML_USE_HIP) && defined(GCN)
++#if defined(GGML_USE_HIP) && defined(GCN) && !defined(GGML_GCN_NO_DPP)
+ // GCN (Vega) DPP-based warp reductions.
+ //
+ // On GCN, __shfl_xor lowers to ds_bpermute_b32 — an LDS roundtrip plus
+@@ -579,7 +579,7 @@ static __device__ __forceinline__ int ggml_gcn_warp_reduce_sum_i32(int x) {
+ 
+ template<int width = WARP_SIZE>
+ static __device__ __forceinline__ int warp_reduce_sum(int x) {
+-#if defined(GGML_USE_HIP) && defined(GCN)
++#if defined(GGML_USE_HIP) && defined(GCN) && !defined(GGML_GCN_NO_DPP)
+     return ggml_gcn_warp_reduce_sum_i32<width>(x);
+ #elif !defined(GGML_USE_HIP) && __CUDA_ARCH__ >= GGML_CUDA_CC_AMPERE
+     return __reduce_add_sync(0xffffffff, x);
+@@ -594,7 +594,7 @@ static __device__ __forceinline__ int warp_reduce_sum(int x) {
+ 
+ template<int width = WARP_SIZE>
+ static __device__ __forceinline__ float warp_reduce_sum(float x) {
+-#if defined(GGML_USE_HIP) && defined(GCN)
++#if defined(GGML_USE_HIP) && defined(GCN) && !defined(GGML_GCN_NO_DPP)
+     return ggml_gcn_warp_reduce_sum_f32<width>(x);
+ #else
+ #pragma unroll
+@@ -607,7 +607,7 @@ static __device__ __forceinline__ float warp_reduce_sum(float x) {
+ 
+ template<int width = WARP_SIZE>
+ static __device__ __forceinline__ float2 warp_reduce_sum(float2 a) {
+-#if defined(GGML_USE_HIP) && defined(GCN)
++#if defined(GGML_USE_HIP) && defined(GCN) && !defined(GGML_GCN_NO_DPP)
+     a.x = ggml_gcn_warp_reduce_sum_f32<width>(a.x);
+     a.y = ggml_gcn_warp_reduce_sum_f32<width>(a.y);
+     return a;
+@@ -664,7 +664,7 @@ static __device__ __forceinline__ int warp_reduce_any(int x) {
+ 
+ template<int width = WARP_SIZE>
+ static __device__ __forceinline__ float warp_reduce_max(float x) {
+-#if defined(GGML_USE_HIP) && defined(GCN)
++#if defined(GGML_USE_HIP) && defined(GCN) && !defined(GGML_GCN_NO_DPP)
+     return ggml_gcn_warp_reduce_max_f32<width>(x);
+ #else
+ #pragma unroll
+diff --git a/ggml/src/ggml-cuda/fattn-tile.cuh b/ggml/src/ggml-cuda/fattn-tile.cuh
+index a43f29ccf..5935cc47c 100644
+--- a/ggml/src/ggml-cuda/fattn-tile.cuh
++++ b/ggml/src/ggml-cuda/fattn-tile.cuh
+@@ -1,3 +1,6 @@
++// The flash-attention kernels keep the generic (ds_bpermute) warp reductions on GCN: with the DPP reductions the
++// attention-heavy prefill at 32K depth on one die read -3.6% (night 2026-09-09, n3 vs n2) for +0.5% decode.
++#define GGML_GCN_NO_DPP
+ #include "common.cuh"
+ #include "fattn-common.cuh"
+ 
+diff --git a/ggml/src/ggml-cuda/fattn-vec.cuh b/ggml/src/ggml-cuda/fattn-vec.cuh
+index 96869d5e0..42d52abb9 100644
+--- a/ggml/src/ggml-cuda/fattn-vec.cuh
++++ b/ggml/src/ggml-cuda/fattn-vec.cuh
+@@ -1,3 +1,6 @@
++// The flash-attention kernels keep the generic (ds_bpermute) warp reductions on GCN: with the DPP reductions the
++// attention-heavy prefill at 32K depth on one die read -3.6% (night 2026-09-09, n3 vs n2) for +0.5% decode.
++#define GGML_GCN_NO_DPP
+ #include "common.cuh"
+ #include "fattn-common.cuh"
+ 
+-- 
+2.43.0
+
