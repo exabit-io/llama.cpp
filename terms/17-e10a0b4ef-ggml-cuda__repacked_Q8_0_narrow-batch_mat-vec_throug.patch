@@ -1,0 +1,135 @@
+From e10a0b4ef97ea0065682836a6e46d5a0978bbc44 Mon Sep 17 00:00:00 2001
+From: Nikolas Joshua Britton <joshua@exabit.io>
+Date: Tue, 8 Sep 2026 21:08:26 +0000
+Subject: [PATCH] ggml-cuda: repacked Q8_0 narrow-batch mat-vec through 16
+ tokens (gfx906)
+
+The repacked path handed widths 9-16 to the 32-wide tile, which computes a
+full tile whatever the batch is; on Qwen3.8-27B tp4 that is 141 tok/s at 12
+slots against 197 for the canonical 16-column mat-vec. Instantiate the
+multi-column mat-vec (2 rows per lane, 64 lanes, same geometry as width 8)
+for 9..16 and raise the crossover for Q8_0 only; the other repacked types
+keep 8 until measured.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01J7vExpESBd5iZ2LuZfBZ3S
+---
+ ggml/src/ggml-cuda/q8_repack/mul-mat.cu       | 74 ++++++++++++++++++-
+ .../src/ggml-cuda/q8_repack/repack-common.cuh |  9 +++
+ 2 files changed, 82 insertions(+), 1 deletion(-)
+
+diff --git a/ggml/src/ggml-cuda/q8_repack/mul-mat.cu b/ggml/src/ggml-cuda/q8_repack/mul-mat.cu
+index dbb2e1c6a..e149a58bf 100644
+--- a/ggml/src/ggml-cuda/q8_repack/mul-mat.cu
++++ b/ggml/src/ggml-cuda/q8_repack/mul-mat.cu
+@@ -45,7 +45,7 @@ void ggml_cuda_mul_mat_repacked(ggml_backend_cuda_context & ctx,
+     const int64_t ne10_padded = GGML_PAD(ne10, MATRIX_ROW_PADDING);
+     const int64_t x_stride    = ne10_padded / QK8_1;
+ 
+-    if (ne11 >= 1 && ne11 <= MMQ_RP_Q8_MMV_MAX_TOKENS) {
++    if (ne11 >= 1 && ne11 <= rp_mmv_max_tokens(src0->type)) {
+         // One token, or a narrow batch: plain Q8_1 rows, one weight pass. The
+         // tiled path below computes a full 32-wide tile whatever the batch is.
+         ggml_cuda_pool_alloc<block_q8_1> src1_q8_1_own;
+@@ -267,6 +267,78 @@ static void ggml_cuda_mul_mat_repacked_nc_t(
+             mul_mat_vec_repacked_nc<2, 1, 8, 2, 64, WT><<<grid, 64, 0, stream>>>(
+                 w, xq, dst_d, (uint32_t) ne00, (uint32_t) ne01, xs, ys);
+         } break;
++        case 9: {
++            if constexpr (WT == GGML_TYPE_Q8_0) {
++                const dim3 grid((ne01 + 1) / 2, 1, 1);
++                mul_mat_vec_repacked_nc<2, 1, 9, 2, 64, WT><<<grid, 64, 0, stream>>>(
++                    w, xq, dst_d, (uint32_t) ne00, (uint32_t) ne01, xs, ys);
++            } else {
++                GGML_ABORT("nc mat-vec: widths 9-16 are Q8_0 only");
++            }
++        } break;
++        case 10: {
++            if constexpr (WT == GGML_TYPE_Q8_0) {
++                const dim3 grid((ne01 + 1) / 2, 1, 1);
++                mul_mat_vec_repacked_nc<2, 1, 10, 2, 64, WT><<<grid, 64, 0, stream>>>(
++                    w, xq, dst_d, (uint32_t) ne00, (uint32_t) ne01, xs, ys);
++            } else {
++                GGML_ABORT("nc mat-vec: widths 9-16 are Q8_0 only");
++            }
++        } break;
++        case 11: {
++            if constexpr (WT == GGML_TYPE_Q8_0) {
++                const dim3 grid((ne01 + 1) / 2, 1, 1);
++                mul_mat_vec_repacked_nc<2, 1, 11, 2, 64, WT><<<grid, 64, 0, stream>>>(
++                    w, xq, dst_d, (uint32_t) ne00, (uint32_t) ne01, xs, ys);
++            } else {
++                GGML_ABORT("nc mat-vec: widths 9-16 are Q8_0 only");
++            }
++        } break;
++        case 12: {
++            if constexpr (WT == GGML_TYPE_Q8_0) {
++                const dim3 grid((ne01 + 1) / 2, 1, 1);
++                mul_mat_vec_repacked_nc<2, 1, 12, 2, 64, WT><<<grid, 64, 0, stream>>>(
++                    w, xq, dst_d, (uint32_t) ne00, (uint32_t) ne01, xs, ys);
++            } else {
++                GGML_ABORT("nc mat-vec: widths 9-16 are Q8_0 only");
++            }
++        } break;
++        case 13: {
++            if constexpr (WT == GGML_TYPE_Q8_0) {
++                const dim3 grid((ne01 + 1) / 2, 1, 1);
++                mul_mat_vec_repacked_nc<2, 1, 13, 2, 64, WT><<<grid, 64, 0, stream>>>(
++                    w, xq, dst_d, (uint32_t) ne00, (uint32_t) ne01, xs, ys);
++            } else {
++                GGML_ABORT("nc mat-vec: widths 9-16 are Q8_0 only");
++            }
++        } break;
++        case 14: {
++            if constexpr (WT == GGML_TYPE_Q8_0) {
++                const dim3 grid((ne01 + 1) / 2, 1, 1);
++                mul_mat_vec_repacked_nc<2, 1, 14, 2, 64, WT><<<grid, 64, 0, stream>>>(
++                    w, xq, dst_d, (uint32_t) ne00, (uint32_t) ne01, xs, ys);
++            } else {
++                GGML_ABORT("nc mat-vec: widths 9-16 are Q8_0 only");
++            }
++        } break;
++        case 15: {
++            if constexpr (WT == GGML_TYPE_Q8_0) {
++                const dim3 grid((ne01 + 1) / 2, 1, 1);
++                mul_mat_vec_repacked_nc<2, 1, 15, 2, 64, WT><<<grid, 64, 0, stream>>>(
++                    w, xq, dst_d, (uint32_t) ne00, (uint32_t) ne01, xs, ys);
++            } else {
++                GGML_ABORT("nc mat-vec: widths 9-16 are Q8_0 only");
++            }
++        } break;
++        case 16: {
++            if constexpr (WT == GGML_TYPE_Q8_0) {
++                const dim3 grid((ne01 + 1) / 2, 1, 1);
++                mul_mat_vec_repacked_nc<2, 1, 16, 2, 64, WT><<<grid, 64, 0, stream>>>(
++                    w, xq, dst_d, (uint32_t) ne00, (uint32_t) ne01, xs, ys);
++            } else {
++                GGML_ABORT("nc mat-vec: widths 9-16 are Q8_0 only");
++            }
++        } break;
+         default: GGML_ABORT("nc mat-vec: unsupported batch width");
+     }
+ }
+diff --git a/ggml/src/ggml-cuda/q8_repack/repack-common.cuh b/ggml/src/ggml-cuda/q8_repack/repack-common.cuh
+index 091c8703b..77f62eee0 100644
+--- a/ggml/src/ggml-cuda/q8_repack/repack-common.cuh
++++ b/ggml/src/ggml-cuda/q8_repack/repack-common.cuh
+@@ -17,6 +17,15 @@
+ // leads from 2 tokens (77.2 against the tile's 14.3) through 8 (159.6 against
+ // 98.9), and the tile takes back over by 12, so the crossover is 8 to 12.
+ #define MMQ_RP_Q8_MMV_MAX_TOKENS 8
++// Q8_0 only: the multi-column mat-vec is instantiated through 16 tokens, so the
++// 9-16 range that the 32-wide tile served (measured 141 tok/s at 12 slots on
++// Qwen3.8-27B tp4 against 197 for the canonical 16-column mat-vec) takes one
++// mat-vec pass instead. The other repacked types keep the crossover at 8 until
++// they are measured.
++#define MMQ_RP_Q8_MMV_MAX_TOKENS_Q8_0 16
++static inline int rp_mmv_max_tokens(const ggml_type type) {
++    return type == GGML_TYPE_Q8_0 ? MMQ_RP_Q8_MMV_MAX_TOKENS_Q8_0 : MMQ_RP_Q8_MMV_MAX_TOKENS;
++}
+ // MoE narrow batch: at or below this many tokens, run one mat-vec per
+ // assignment instead of the tiled GEMM. Expert token counts are per expert, so
+ // at these widths nearly every active expert holds a single assignment.
+-- 
+2.43.0
+

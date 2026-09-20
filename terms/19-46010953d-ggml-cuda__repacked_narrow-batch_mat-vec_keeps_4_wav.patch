@@ -1,0 +1,38 @@
+From 46010953d147b7ba10d44d6733385c1bd5ed271d Mon Sep 17 00:00:00 2001
+From: Nikolas Joshua Britton <joshua@exabit.io>
+Date: Tue, 8 Sep 2026 21:18:16 +0000
+Subject: [PATCH] ggml-cuda: repacked narrow-batch mat-vec keeps 4 waves/EU
+ through 10 columns, 2 above
+
+A bare block-size bound let the max-ilp scheduler take 129 VGPRs at width 8
+and 228 at 16 (one wave per SIMD on gfx906). Keep the 64-VGPR budget the
+measured widths were built with and relax to 128 only for 11-16 columns,
+where the 64-VGPR build spills.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01J7vExpESBd5iZ2LuZfBZ3S
+---
+ ggml/src/ggml-cuda/q8_repack/repack-kernels.cuh | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/ggml/src/ggml-cuda/q8_repack/repack-kernels.cuh b/ggml/src/ggml-cuda/q8_repack/repack-kernels.cuh
+index e71dd807b..430690445 100644
+--- a/ggml/src/ggml-cuda/q8_repack/repack-kernels.cuh
++++ b/ggml/src/ggml-cuda/q8_repack/repack-kernels.cuh
+@@ -1135,8 +1135,11 @@ static __device__ __forceinline__ void mul_mat_vec_repacked_nc_impl(
+ template <int ROWS, int NWAVES, int NCOLS, int RPL = 1, int LANES = 64, ggml_type WT = GGML_TYPE_Q8_0>
+ // Without a bound the compiler sizes registers for a 1024-thread block (64
+ // VGPRs on gfx906) and the 2-row 64-lane instantiations spill from 11 columns
+-// up (18 VGPR spills, 52 B scratch at 16). The block is NWAVES waves.
+-static __global__ void __launch_bounds__(NWAVES * 64) mul_mat_vec_repacked_nc(
++// up (18 VGPR spills, 52 B scratch at 16). A bare block-size bound lets the
++// max-ilp scheduler take 129 VGPRs at 8 columns and 228 at 16 (one wave per
++// SIMD), so keep four waves per EU (64 VGPRs, the code as measured) through
++// ten columns and allow two (128 VGPRs) only where the 64-VGPR build spills.
++static __global__ void __launch_bounds__(NWAVES * 64, (NCOLS > 10 ? 2 : 4)) mul_mat_vec_repacked_nc(
+         const uint8_t * __restrict__ wbase, const block_q8_1 * __restrict__ xq,
+         float * __restrict__ y, const uint32_t ne0, const uint32_t ne1,
+         const uint32_t xs, const uint32_t ys) {
+-- 
+2.43.0
+
