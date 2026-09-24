@@ -205,7 +205,9 @@ option(GGML_CUDA_NO_PEER_COPY               "ggml: do not use peer to peer copie
 option(GGML_CUDA_NO_VMM                     "ggml: do not try to use CUDA VMM"                OFF)
 option(GGML_CUDA_FA                         "ggml: compile ggml FlashAttention CUDA kernels"  ON)
 option(GGML_CUDA_FA_ALL_QUANTS              "ggml: compile all quants for FlashAttention"     OFF)
-set   (GGML_CUDA_FA_QUANTS "q4_0-q4_0;q8_0-q8_0;f16-f16;bf16-bf16" CACHE STRING
+# gfx906 (REQUIREMENTS R3.11): compile every K/V combination. An uncompiled pair does not fail, it silently
+# converts K and V to f16, so a narrower default produces readings that are f16 wearing a quantised label.
+set   (GGML_CUDA_FA_QUANTS "all" CACHE STRING
                                             "ggml: FlashAttention K-V type combinations to compile, \"all\" or a list such as \"q8_0-q8_0;q8_0-q4_0\"")
 option(GGML_CUDA_GRAPHS                     "ggml: use CUDA graphs (llama.cpp only)"          ${GGML_CUDA_GRAPHS_DEFAULT})
 option(GGML_CUDA_NCCL                       "ggml: use NVIDIA Collective Comm. Library"       ON)
@@ -215,7 +217,9 @@ set_property(CACHE GGML_CUDA_COMPRESSION_MODE PROPERTY STRINGS "none;speed;balan
 
 option(GGML_HIP                             "ggml: use HIP"                                   OFF)
 option(GGML_HIP_GRAPHS                      "ggml: use HIP graph"                              ON)
-option(GGML_HIP_RCCL                        "ggml: use ROCm Collective Comm. Library"         OFF)
+# gfx906 (REQUIREMENTS R3.11): RCCL is the shipping collective; without it tensor split falls back to the
+# meta-backend butterfly, measured at -18.6% prefill (4x64K). Upstream defaults this OFF.
+option(GGML_HIP_RCCL                        "ggml: use ROCm Collective Comm. Library"         ON)
 option(GGML_HIP_NO_VMM                      "ggml: do not try to use HIP VMM"                 ON)
 option(GGML_HIP_MMQ_MFMA                    "ggml: enable MFMA MMA for CDNA in MMQ"           ON)
 option(GGML_HIP_EXPORT_METRICS              "ggml: enable kernel perf metrics output"         OFF)
