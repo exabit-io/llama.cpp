@@ -1,11 +1,10 @@
 <!-- exabit banner -->
-> **exabit-io/llama.cpp** — llama.cpp for AMD gfx906 (Radeon Pro Vega II / MI50, four-die Mac Pro nodes).
-> **Current (2026-09-24):** the code sits on the substrate [`exabit-io/mx-llama.cpp` `merge-v0.5.0`](https://github.com/exabit-io/mx-llama.cpp/tree/merge-v0.5.0)
-> (mxxm-t's gfx906 fork merged with llama.cpp v0.5.0, offered upstream as [mxxm-t/mx-llama.cpp#17](https://github.com/mxxm-t/mx-llama.cpp/pull/17)),
-> in the branches **`gfx906-required`**, **`gfx906-both`**, **`gfx906-single`**, **`gfx906-multi`** — see
-> [BRANCHES.md on `c4-series`](https://github.com/exabit-io/llama.cpp/blob/c4-series/BRANCHES.md).
-> This branch, `gfx906`, is the **2026-09-09 state** (upstream master merged into the fork at b10912 + the Exabit series), kept as history;
-> `master` mirrors upstream. Measurements and launch profiles: [exabit-io/llama.cpp-gfx906-tuning](https://github.com/exabit-io/llama.cpp-gfx906-tuning).
+> **This repository is retired (archived 2026-09-24).** Exabit's gfx906 llama.cpp code is now in
+> **[exabit-io/mx-llama.cpp](https://github.com/exabit-io/mx-llama.cpp)** — `master` is the substrate (mxxm-t's gfx906 fork merged
+> with llama.cpp v0.5.0, offered upstream as [mxxm-t/mx-llama.cpp#17](https://github.com/mxxm-t/mx-llama.cpp/pull/17)), with the
+> branches `gfx906-both`, `gfx906-single`, `gfx906-multi` and `gfx906-candidates`. Everything here is kept as history: this
+> `gfx906` branch is the 2026-09-09 state, the other branches and the `gfx906/v0.4.1/*`, `gfx906/v0.5.0/*` and `import/*` tags are
+> the work up to 2026-09-24. Measurements and plans: [exabit-io/llama.cpp-gfx906-tuning](https://github.com/exabit-io/llama.cpp-gfx906-tuning).
 
 <!-- fork banner -->
 > **mx-llama.cpp** - a fork of llama.cpp for multi-GPU inference. Backend-generic,
